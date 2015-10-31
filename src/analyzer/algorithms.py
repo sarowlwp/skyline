@@ -87,6 +87,8 @@ def grubbs(timeseries):
     threshold_squared = threshold * threshold
     grubbs_score = ((len_series - 1) / np.sqrt(len_series)) * np.sqrt(threshold_squared / (len_series - 2 + threshold_squared))
 
+    logger.info("grubbs stdDev:" + str(stdDev))
+    logger.info("grubbs mean" + str(mean))
     return z_score > grubbs_score
 
 
@@ -96,13 +98,29 @@ def first_hour_average(timeseries):
     A timeseries is anomalous if the average of the last three datapoints
     are outside of three standard deviations of this value.
     """
+    #logger.info(str(timeseries))
     last_hour_threshold = time() - (FULL_DURATION - 3600)
-    series = pandas.Series([x[1] for x in timeseries if x[0] < last_hour_threshold])
-    mean = (series).mean()
-    stdDev = (series).std()
+    #series = pandas.Series([x[1] for x in timeseries if x[0] < last_hour_threshold])
+    #series.dropna()
+    #mean = (series).mean()
+    #stdDev = (series).std()
+    series = scipy.array([x[1] for x in timeseries if x[0] < last_hour_threshold])
+    stdDev = scipy.std(series)
+    mean = np.mean(series)
     t = tail_avg(timeseries)
-
+    logger.info("first_hour_average -- tail_avg:" + str(t) + "  | 3 * stdDev : " + str(stdDev) + " | " + str(len(timeseries)))
+    #logger.info("float %f " % stdDev)
+    #logger.info("mean" + str(mean))
+    #logger.info(type(stdDev))
+    #logger.info(dir(stdDev))
+    #logger.info(stdDev.tostring())
+    #logger.info("scipy"+str(scipy.std(series)))
+    #logger.info("np" + str(np.mean(series)))
+    #logger.info(str(stdDev.size()))
+    #logger.info(str(stdDev.data()))
+    #logger.info(str(stdDev.__float__()))
     return abs(t - mean) > 3 * stdDev
+
 
 
 def stddev_from_average(timeseries):
@@ -275,27 +293,45 @@ def run_selected_algorithm(timeseries, metric_name):
     """
     # Get rid of short series
     if len(timeseries) < MIN_TOLERABLE_LENGTH:
+        logger.info("too short")
         raise TooShort()
 
     # Get rid of stale series
     if time() - timeseries[-1][0] > STALE_PERIOD:
+        logger.info("stale")
         raise Stale()
 
     # Get rid of boring series
     if len(set(item[1] for item in timeseries[-MAX_TOLERABLE_BOREDOM:])) == BOREDOM_SET_SIZE:
+        logger.info("boring")
         raise Boring()
 
+    logger.info("run algorithm ,timeseries len:"+str(len(timeseries)))
     try:
-        ensemble = [globals()[algorithm](timeseries) for algorithm in ALGORITHMS]
+        logger.info("start check")
+        ensemble = []
+        for algorithm in ALGORITHMS:
+            try:
+                ensemble.append(globals()[algorithm](timeseries))
+            except Exception as e:
+                logger.info("algorithm Error"+ str(e))
+
+        logger.info("select algorithm")
         threshold = len(ensemble) - CONSENSUS
+        logger.info("threshold len:" + str(threshold) + "|" + str(len(ensemble)))
+        logger.info(str(ensemble))
         if ensemble.count(False) <= threshold:
             if ENABLE_SECOND_ORDER:
                 if is_anomalously_anomalous(metric_name, ensemble, timeseries[-1][1]):
+                    logger.info("anomalous checked")
                     return True, ensemble, timeseries[-1][1]
             else:
+                logger.info("not enalbe_sencond_order")
                 return True, ensemble, timeseries[-1][1]
 
+        logger.info("no check , return direct")
         return False, ensemble, timeseries[-1][1]
     except:
+        logger.info("Error algorithm")
         logging.error("Algorithm error: " + traceback.format_exc())
         return False, [], 1

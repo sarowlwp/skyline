@@ -9,6 +9,7 @@ import time
 from os.path import dirname, join, realpath
 from multiprocessing import Manager, Process, log_to_stderr
 from struct import Struct, pack
+import random
 
 import redis
 import msgpack
@@ -37,11 +38,18 @@ def seed():
         series = data['results']
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
+        count = 0
         for datapoint in series:
             datapoint[0] = initial
             initial += 1
+            count=count+1
+            if count > 7000:
+                datapoint[1] = datapoint[1] + random.randint(10000,33300000)
+
+            print datapoint,str(settings.UDP_PORT),metric
             packet = msgpack.packb((metric, datapoint))
-            sock.sendto(packet, (socket.gethostname(), settings.UDP_PORT))
+            #sock.sendto(packet, (socket.gethostname(), settings.UDP_PORT))
+            sock.sendto(packet, ("127.0.0.1", settings.UDP_PORT))
 
     print "Connecting to Redis..."
     r = redis.StrictRedis(unix_socket_path=settings.REDIS_SOCKET_PATH)
@@ -49,6 +57,7 @@ def seed():
 
     try:
         x = r.smembers(settings.FULL_NAMESPACE + metric_set)
+        print settings.FULL_NAMESPACE + metric_set
         if x is None:
             raise NoDataException
 

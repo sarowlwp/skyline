@@ -46,6 +46,7 @@ class Worker(Process):
         return False
 
     def send_graphite_metric(self, name, value):
+        """
         if settings.GRAPHITE_HOST != '':
             sock = socket.socket()
             sock.connect((settings.GRAPHITE_HOST, settings.CARBON_PORT))
@@ -54,6 +55,8 @@ class Worker(Process):
             return True
 
         return False
+        """
+        return True
 
     def run(self):
         """

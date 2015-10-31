@@ -45,6 +45,7 @@ class Analyzer(Thread):
             exit(0)
 
     def send_graphite_metric(self, name, value):
+        """
         if settings.GRAPHITE_HOST != '':
             sock = socket.socket()
             sock.connect((settings.GRAPHITE_HOST, settings.CARBON_PORT))
@@ -53,11 +54,15 @@ class Analyzer(Thread):
             return True
 
         return False
+        """
+        return True
 
     def spin_process(self, i, unique_metrics):
         """
         Assign a bunch of metrics for a process to analyze.
         """
+        logger.info("index"+str(i))
+        logger.info(unique_metrics)
         # Discover assigned metrics
         keys_per_processor = int(ceil(float(len(unique_metrics)) / float(settings.ANALYZER_PROCESSES)))
         if i == settings.ANALYZER_PROCESSES:
@@ -72,6 +77,7 @@ class Analyzer(Thread):
 
         # Check if this process is unnecessary
         if len(assigned_metrics) == 0:
+            logger.info("unnecessary process ,return direct")
             return
 
         # Multi get series
@@ -80,6 +86,7 @@ class Analyzer(Thread):
         # Make process-specific dicts
         exceptions = defaultdict(int)
         anomaly_breakdown = defaultdict(int)
+        logger.info("assigned_metrics len:" + str(len(assigned_metrics)))
 
         # Distill timeseries strings into lists
         for i, metric_name in enumerate(assigned_metrics):
@@ -90,9 +97,9 @@ class Analyzer(Thread):
                 unpacker = Unpacker(use_list = False)
                 unpacker.feed(raw_series)
                 timeseries = list(unpacker)
-
+                logger.info("data")
                 anomalous, ensemble, datapoint = run_selected_algorithm(timeseries, metric_name)
-
+                #logger.info(anomalous,ensemble,datapoint)
                 # If it's anomalous, add it to list
                 if anomalous:
                     base_name = metric_name.replace(settings.FULL_NAMESPACE, '', 1)
@@ -152,11 +159,17 @@ class Analyzer(Thread):
             # Spawn processes
             pids = []
             for i in range(1, settings.ANALYZER_PROCESSES + 1):
+                #print "hello world"
+                logger.info(str(len(unique_metrics)))
+                logger.info(str(settings.ANALYZER_PROCESSES + 1))
+
                 if i > len(unique_metrics):
-                    logger.info('WARNING: skyline is set for more cores than needed.')
-                    break
+                    logger.info('alt WARNING: skyline is set for more cores than needed.')
+                    #break
 
                 p = Process(target=self.spin_process, args=(i, unique_metrics))
+
+                #p = Process(target=self.spin_process, args=(0, unique_metrics))
                 pids.append(p)
                 p.start()
 
@@ -204,10 +217,16 @@ class Analyzer(Thread):
 
             # Write anomalous_metrics to static webapp directory
             filename = path.abspath(path.join(path.dirname(__file__), '..', settings.ANOMALY_DUMP))
+            logger.info(filename)
             with open(filename, 'w') as fh:
+                #print filename
+                #print anomalous_metrics
                 # Make it JSONP with a handle_data() function
                 anomalous_metrics = list(self.anomalous_metrics)
                 anomalous_metrics.sort(key=operator.itemgetter(1))
+                #print anomalous_metrics
+                logger.info("start write " + filename)
+                logger.info(str(anomalous_metrics))
                 fh.write('handle_data(%s)' % anomalous_metrics)
 
             # Log progress

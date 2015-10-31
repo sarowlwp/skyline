@@ -181,25 +181,41 @@ class Listen(Process):
             try:
                 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 s.bind((self.ip, self.port))
-                logger.info('listening over udp for messagepack on %s' % self.port)
+                #logger.info(str(self.ip),str(self.port))
+                logger.info('alt listening over udp for messagepack on %s' % self.port)
+                logger.info(str(self.ip))
 
                 chunk = []
                 while 1:
-                    self.check_if_parent_is_alive()
-                    data, addr = s.recvfrom(1024)
-                    metric = unpackb(data)
-                    chunk.append(metric)
+                    try:
+                        self.check_if_parent_is_alive()
+                        data, addr = s.recvfrom(1024)
+                        metric = unpackb(data)
+                        logger.info(str(metric))
+                        """
+                        if type(metric[1]) is not []:
+                            time = float(metric[1])
+                            data = float(metric[2])
+                            name = str(metric[0])
+                            metric = [name,[time,data]]
+                            logger.info(metric)
+                        """
+                        chunk.append(metric)
+                        #print chunk
 
-                    # Queue the chunk and empty the variable
-                    if len(chunk) > settings.CHUNK_SIZE:
-                        try:
-                            self.q.put(list(chunk), block=False)
-                            chunk[:] = []
+                        # Queue the chunk and empty the variable
+                        if len(chunk) > settings.CHUNK_SIZE:
+                            try:
+                                self.q.put(list(chunk), block=False)
+                                chunk[:] = []
 
-                        # Drop chunk if queue is full
-                        except Full:
-                            logger.info('queue is full, dropping datapoints')
-                            chunk[:] = []
+                            # Drop chunk if queue is full
+                            except Full:
+                                logger.info('queue is full, dropping datapoints')
+                                chunk[:] = []
+                    except Exception as e:
+                        logger.info(str(e))
+
 
             except Exception as e:
                 logger.info('can\'t connect to socket: ' + str(e))
