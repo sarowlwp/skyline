@@ -61,8 +61,8 @@ class Analyzer(Thread):
         """
         Assign a bunch of metrics for a process to analyze.
         """
-        logger.info("index"+str(i))
-        logger.info(unique_metrics)
+        logger.info("metric index : "+str(i))
+        logger.info("metric name : " + str(unique_metrics))
         # Discover assigned metrics
         keys_per_processor = int(ceil(float(len(unique_metrics)) / float(settings.ANALYZER_PROCESSES)))
         if i == settings.ANALYZER_PROCESSES:
@@ -86,7 +86,7 @@ class Analyzer(Thread):
         # Make process-specific dicts
         exceptions = defaultdict(int)
         anomaly_breakdown = defaultdict(int)
-        logger.info("assigned_metrics len:" + str(len(assigned_metrics)))
+        logger.info("[data length] assigned_metrics len : " + str(len(assigned_metrics)))
 
         # Distill timeseries strings into lists
         for i, metric_name in enumerate(assigned_metrics):
@@ -97,7 +97,7 @@ class Analyzer(Thread):
                 unpacker = Unpacker(use_list = False)
                 unpacker.feed(raw_series)
                 timeseries = list(unpacker)
-                logger.info("data")
+                logger.info("start run selected algorithm ~")
                 anomalous, ensemble, datapoint = run_selected_algorithm(timeseries, metric_name)
                 #logger.info(anomalous,ensemble,datapoint)
                 # If it's anomalous, add it to list
@@ -217,7 +217,7 @@ class Analyzer(Thread):
 
             # Write anomalous_metrics to static webapp directory
             filename = path.abspath(path.join(path.dirname(__file__), '..', settings.ANOMALY_DUMP))
-            logger.info(filename)
+            #logger.info(filename)
             with open(filename, 'w') as fh:
                 #print filename
                 #print anomalous_metrics
@@ -225,8 +225,7 @@ class Analyzer(Thread):
                 anomalous_metrics = list(self.anomalous_metrics)
                 anomalous_metrics.sort(key=operator.itemgetter(1))
                 #print anomalous_metrics
-                logger.info("start write " + filename)
-                logger.info(str(anomalous_metrics))
+                logger.info("start write " + filename + " | content : " + str(anomalous_metrics))
                 fh.write('handle_data(%s)' % anomalous_metrics)
 
             # Log progress

@@ -191,7 +191,7 @@ class Listen(Process):
                         self.check_if_parent_is_alive()
                         data, addr = s.recvfrom(1024)
                         metric = unpackb(data)
-                        logger.info(str(metric))
+                        logger.info("[udp] metric pack recive : " + str(metric))
                         """
                         if type(metric[1]) is not []:
                             time = float(metric[1])
@@ -201,7 +201,6 @@ class Listen(Process):
                             logger.info(metric)
                         """
                         chunk.append(metric)
-                        #print chunk
 
                         # Queue the chunk and empty the variable
                         if len(chunk) > settings.CHUNK_SIZE:

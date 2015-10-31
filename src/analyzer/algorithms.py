@@ -293,33 +293,37 @@ def run_selected_algorithm(timeseries, metric_name):
     """
     # Get rid of short series
     if len(timeseries) < MIN_TOLERABLE_LENGTH:
-        logger.info("too short")
+        logger.info("[WARNING] too short, skip calc")
         raise TooShort()
 
     # Get rid of stale series
     if time() - timeseries[-1][0] > STALE_PERIOD:
-        logger.info("stale")
+        logger.info("[WARNING] stale, skip calc")
         raise Stale()
 
     # Get rid of boring series
     if len(set(item[1] for item in timeseries[-MAX_TOLERABLE_BOREDOM:])) == BOREDOM_SET_SIZE:
-        logger.info("boring")
+        logger.info("[WARNING] boring, skip calc")
         raise Boring()
 
-    logger.info("run algorithm ,timeseries len:"+str(len(timeseries)))
+    logger.info("timeseries success , run algorithm, timeseries len : "+str(len(timeseries)))
     try:
-        logger.info("start check")
+        logger.info("start in try cache.")
         ensemble = []
+        ensemble_result = {}
         for algorithm in ALGORITHMS:
             try:
-                ensemble.append(globals()[algorithm](timeseries))
+                result = globals()[algorithm](timeseries)
+                ensemble.append(result)
+                ensemble_result[algorithm]=result
             except Exception as e:
                 logger.info("algorithm Error"+ str(e))
+                ensemble.append(None)
 
-        logger.info("select algorithm")
+        logger.info("check result :" + str(ensemble_result) )
+
         threshold = len(ensemble) - CONSENSUS
         logger.info("threshold len:" + str(threshold) + "|" + str(len(ensemble)))
-        logger.info(str(ensemble))
         if ensemble.count(False) <= threshold:
             if ENABLE_SECOND_ORDER:
                 if is_anomalously_anomalous(metric_name, ensemble, timeseries[-1][1]):
